@@ -79,30 +79,34 @@ def most_common_words(selected_user,df):
     most_common_df = pd.DataFrame(Counter(words).most_common(20))
     return most_common_df
 
-def emoji_helper(selected_user,df):
+def emoji_helper(selected_user, df):
     if selected_user != 'Overall':
         df = df[df['user'] == selected_user]
 
     emojis = []
     for message in df['message']:
-        emojis.extend([c for c in message if c in emoji.UNICODE_EMOJI['en']])
+        # Using emoji v2.0+ syntax
+        emojis.extend([c for c in message if c in emoji.EMOJI_DATA])
 
     emoji_df = pd.DataFrame(Counter(emojis).most_common(len(Counter(emojis))))
-
     return emoji_df
 
 def monthly_timeline(selected_user,df):
-
     if selected_user != 'Overall':
         df = df[df['user'] == selected_user]
 
+    # Convert date strings to datetime objects with 2-digit year format
+    df['date'] = pd.to_datetime(df['date'], format='%d/%m/%y')
+    
+    # Extract year and month information
+    df['year'] = df['date'].dt.year
+    df['month'] = df['date'].dt.month_name()
+    df['month_num'] = df['date'].dt.month
+    
     timeline = df.groupby(['year', 'month_num', 'month']).count()['message'].reset_index()
 
-    time = []
-    for i in range(timeline.shape[0]):
-        time.append(timeline['month'][i] + "-" + str(timeline['year'][i]))
-
-    timeline['time'] = time
+    # Create formatted month-year strings
+    timeline['time'] = timeline.apply(lambda row: f"{row['month'][:3]}-{row['year']}", axis=1)
 
     return timeline
 
