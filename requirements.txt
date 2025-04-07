@@ -1,7 +1,8 @@
-streamlit
+streamlit>=1.28.0
 matplotlib
 seaborn
 urlextract
 wordcloud
-pandas
+pandas>=2.0.0
 emoji
+regex==2023.12.25

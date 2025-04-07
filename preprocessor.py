@@ -37,6 +37,11 @@ def preprocess(data):
     df['user'] = users
     df['message'] = messages
     df.drop(columns=['user_message'], inplace=True)
+
+    # In preprocessor.py (add to preprocessing pipeline)
+    df['sensitive_data'] = df['message'].apply(
+    lambda x: len(re.findall(r'\b(?:\d[ -]*?){13,16}\b', x))  # Credit cards
+    )
     
     # Extract additional datetime components
     df['only_date'] = df['date'].dt.date

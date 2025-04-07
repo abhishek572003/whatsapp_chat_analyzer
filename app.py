@@ -1,5 +1,5 @@
 import streamlit as st
-import preprocessor,helper
+import preprocessor, helper
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -11,10 +11,11 @@ if uploaded_file is not None:
     data = bytes_data.decode("utf-8")
     df = preprocessor.preprocess(data)
 
-    # Fetch unique users from DataFrame
+    # Add sensitive data column
+    df['sensitive_data'] = df['message'].apply(helper.find_sensitive_data)
+
+    # Fetch unique users
     user_list = sorted(df['user'].unique().tolist())
-    
-    # Safely remove group notifications and add Overall
     user_list = [x for x in user_list if x != 'group_notification']
     user_list.insert(0, "Overall")
 
@@ -25,7 +26,7 @@ if uploaded_file is not None:
         num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_user, df)
         st.title("Top Statistics")
         col1, col2, col3, col4 = st.columns(4)
-
+        
         with col1:
             st.header("Total Messages")
             st.title(num_messages)
@@ -38,8 +39,34 @@ if uploaded_file is not None:
         with col4:
             st.header("Links Shared")
             st.title(num_links)
+            st.header("Sensitive Data")
+            st.title(df['sensitive_data'].sum())
 
-        # Monthly timeline
+        # Cybersecurity Analysis
+        with st.expander("🔒 Cybersecurity Analysis", expanded=True):
+            threat_score = helper.calculate_threat_score(df)
+            
+            # Visual progress bar
+            st.progress(threat_score/10)
+            
+            # Color-coded metric
+            if threat_score > 7:
+                st.error(f"Threat Level: {threat_score}/10 - High Risk")
+            elif threat_score > 3:
+                st.warning(f"Threat Level: {threat_score}/10 - Medium Risk")
+            else:
+                st.success(f"Threat Level: {threat_score}/10 - Low Risk")
+            
+            # Detailed breakdown
+            st.caption(f"""
+            Scoring Criteria:
+            - Credential mentions: {len(df[df['message'].str.contains('password|login|credential', case=False)])} x2
+            - Sensitive data leaks: {df['sensitive_data'].sum()} x5
+            - URLs shared: {len(df[df['message'].str.contains('http://|https://')])} x1
+            - Media files: {len(df[df['message'].str.contains('<Media omitted>')])} x0.5
+            """)
+
+        # Rest of the analysis components
         st.title("Monthly Timeline")
         timeline = helper.monthly_timeline(selected_user, df)
         fig, ax = plt.subplots()
@@ -123,3 +150,10 @@ if uploaded_file is not None:
             fig, ax = plt.subplots()
             ax.pie(emoji_df[1].head(), labels=emoji_df[0].head(), autopct="%0.2f")
             st.pyplot(fig)
+
+        # Phishing detection
+        with st.expander("Security Analysis"):
+            if st.button("Check Phishing Links"):
+                all_messages = ' '.join(df['message'])
+                malicious = helper.detect_phishing(all_messages)
+                st.write(f"⚠️ Detected {len(malicious)} phishing links")
